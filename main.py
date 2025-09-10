@@ -24,7 +24,7 @@ from volume_slider_manager import (
 # --- КОНСТАНТЫ ---
 CURRENT_VERSION = "1.0"
 # ЗАМЕНИТЕ ЭТУ ССЫЛКУ на свою. Это должна быть RAW ссылка на version.json в вашем репозитории
-VERSION_URL = "https://raw.githubusercontent.com/username/repository/main/version.json"
+VERSION_URL = "https://raw.githubusercontent.com/olegsamsonenko2019-cloud/soundpad-app/refs/heads/main/version.json"
 
 # Настройки экрана
 SCREEN_WIDTH = 540
@@ -64,7 +64,7 @@ GRID_ROWS = 4
 
 # --- КОНСТАНТЫ РАЗМЕЩЕНИЯ ЭЛЕМЕНТОВ ---
 # Константы для логотипа
-LOGO_IMAGE_PATH = 'logo.png'
+LOGO_IMAGE_PATH = 'assets/logo.png'
 LOGO_TARGET_WIDTH = 80
 LOGO_TARGET_HEIGHT = 50
 LOGO_POS_X = 20
@@ -95,10 +95,10 @@ DOUBLE_CLICK_INTERVAL = 500  # Интервал для двойного клик
 
 # Путь к файлу звука по умолчанию
 DEFAULT_SOUND_FILE_PATH = "sound.wav"
-BACKGROUND_IMAGE_PATH = 'fon.jpg'
-UNASSIGNED_KEY_IMAGE_PATHS = ['skull.png', 'skull2.png']
-TRASH_ICON_PATH = 'tash_can_pixel_icon.ico'  # Путь к иконке корзины
-EDIT_ICON_PATH = 'edit_text_icon.ico'  # Путь к иконке редактирования
+BACKGROUND_IMAGE_PATH = 'assets/fon.jpg'
+UNASSIGNED_KEY_IMAGE_PATHS = ['assets/skull.png', 'assets/skull2.png']
+TRASH_ICON_PATH = 'assets/tash_can_pixel_icon.ico'  # Путь к иконке корзины
+EDIT_ICON_PATH = 'assets/edit_text_icon.ico'  # Путь к иконке редактирования
 
 # Новые константы для управления файлами конфигурации
 CONFIGS_DIR = "configs"
@@ -1514,6 +1514,85 @@ class SoundpadApp:
                     self.button_to_configure = button
                     button['last_pressed_time'] = 0
                     break
+
+    def _handle_prompt_click(self, pos):
+        """Обрабатывает клики мыши в состоянии 'prompt_config_name'."""
+        prompt_width = 450
+        prompt_height = 200
+        prompt_x = (SCREEN_WIDTH - prompt_width) // 2
+        prompt_y = (SCREEN_HEIGHT - prompt_height) // 2
+
+        save_button_rect = pygame.Rect(prompt_x + 80, prompt_y + 140, 120, 40)
+        cancel_button_rect = pygame.Rect(prompt_x + prompt_width - 80 - 120, prompt_y + 140, 120, 40)
+
+        # 1. Проверяем клик по стрелке выпадающего списка
+        if self.dropdown_arrow_rect and self.dropdown_arrow_rect.collidepoint(pos):
+            self.save_dropdown_active = not self.save_dropdown_active
+            if self.save_dropdown_active:
+                self.save_dropdown_scroll_offset = 0
+                self._prepare_save_dropdown_buttons()
+            return
+
+        # 2. Проверяем взаимодействие с ползунком прокрутки
+        if self.save_scrollbar_handle_rect and self.save_scrollbar_handle_rect.collidepoint(pos):
+            self.is_dragging_save_scrollbar = True
+            self.scrollbar_drag_details = {'start_y': pos[1], 'start_offset': self.save_dropdown_scroll_offset}
+            return
+
+        if self.save_scrollbar_rect and self.save_scrollbar_rect.collidepoint(pos):
+            max_visible_items = 4
+            if pos[1] < self.save_scrollbar_handle_rect.top:
+                self.save_dropdown_scroll_offset = max(0, self.save_dropdown_scroll_offset - max_visible_items)
+            else:
+                total_items = len(self._read_available_configs())
+                if total_items > max_visible_items:
+                    self.save_dropdown_scroll_offset = min(total_items - max_visible_items,
+                                                           self.save_dropdown_scroll_offset + max_visible_items)
+            self._prepare_save_dropdown_buttons()
+            return
+
+        # 3. Проверяем клики по элементам в выпадающем списке
+        if self.save_dropdown_active:
+            for item in self.save_dropdown_rects:
+                if item['rect'].collidepoint(pos):
+                    self.current_input_text = item['name']
+                    self.save_dropdown_active = False
+                    return
+
+        # 4. Проверяем клики по кнопкам "Сохранить" и "Назад"
+        if save_button_rect.collidepoint(pos):
+            self.save_dropdown_active = False
+            self._save_config_from_prompt()
+            return
+
+        if cancel_button_rect.collidepoint(pos):
+            self.save_dropdown_active = False
+            self.program_state = 'normal'
+            self.unsaved_changes = True
+            self.current_input_text = ""
+            self.input_prompt_message = ""
+            self.pending_action_after_prompt = None
+            print("[DEBUG] Ввод имени конфигурации отменен, возврат к интерфейсу.")
+            return
+
+        # 5. Если клик был за пределами всех активных элементов, закрываем выпадающий список
+        prompt_rect = pygame.Rect(prompt_x, prompt_y, prompt_width, prompt_height)
+        is_click_outside = not prompt_rect.collidepoint(pos)
+
+        dropdown_area = None
+        if self.dropdown_anim_progress > 0 and self.save_dropdown_rects:
+            first_rect = self.save_dropdown_rects[0]['rect']
+            last_rect = self.save_dropdown_rects[-1]['rect']
+            dropdown_area = pygame.Rect(first_rect.left, first_rect.top, first_rect.width,
+                                        last_rect.bottom - first_rect.top)
+            if self.save_scrollbar_rect:
+                dropdown_area.union_ip(self.save_scrollbar_rect)
+
+        if dropdown_area and dropdown_area.collidepoint(pos):
+            is_click_outside = False
+
+        if is_click_outside:
+            self.save_dropdown_active = False
 
     def _handle_update_prompt_click(self, pos):
         """Обрабатывает клики в окне обновления."""
