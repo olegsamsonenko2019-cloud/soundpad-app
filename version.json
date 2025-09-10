@@ -1,5 +1,5 @@
 {
   "latest_version": "1.1",
-  "download_url": "https://github.com/olegsamsonenko2019-cloud/soundpad-app/releases/download/v1.1/Soundpad.exe",
+  "download_url": "https://github.com/olegsamsonenko2019-cloud/soundpad-app/releases/latest/download/Soundpad.exe",
   "release_notes": "Исправлена ошибка, приводившая к вылету программы при сохранении пресетов. Ресурсы перемещены в папку assets."
 }

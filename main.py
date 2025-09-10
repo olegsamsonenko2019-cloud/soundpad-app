@@ -10,6 +10,7 @@ import re  # Импортируем регулярные выражения дл
 import urllib.request
 import threading
 import webbrowser
+import ctypes # Импортируем ctypes для установки атрибута "скрытый"
 
 from layer_manager import LayerManager, LAYER_COLORS_FOR_BUTTONS
 # Импортируем VolumeSliderManager и константы размеров ползунка напрямую
@@ -22,7 +23,7 @@ from volume_slider_manager import (
 )
 
 # --- КОНСТАНТЫ ---
-CURRENT_VERSION = "1.0"
+CURRENT_VERSION = "1.1" # ИЗМЕНЕНО: Обновлена текущая версия
 # ЗАМЕНИТЕ ЭТУ ССЫЛКУ на свою. Это должна быть RAW ссылка на version.json в вашем репозитории
 VERSION_URL = "https://raw.githubusercontent.com/olegsamsonenko2019-cloud/soundpad-app/refs/heads/main/version.json"
 
@@ -104,6 +105,20 @@ EDIT_ICON_PATH = 'assets/edit_text_icon.ico'  # Путь к иконке ред�
 CONFIGS_DIR = "configs"
 INTERNAL_DEFAULT_CONFIG_NAME = "internal_default_blank"  # Скрытое имя пресета по умолчанию
 
+def hide_folder(path):
+    """
+    Устанавливает атрибут 'скрытый' для папки в Windows.
+    """
+    try:
+        if sys.platform == "win32":
+            # FILE_ATTRIBUTE_HIDDEN = 0x02
+            ret = ctypes.windll.kernel32.SetFileAttributesW(path, 0x02)
+            if ret:
+                print(f"Папка '{path}' сделана скрытой.")
+            else:
+                print(f"Не удалось сделать папку '{path}' скрытой.")
+    except Exception as e:
+        print(f"Ошибка при попытке скрыть папку: {e}")
 
 def get_bundle_path(relative_path):
     """
@@ -216,7 +231,9 @@ class SoundpadApp:
         )
 
         self.config_folder_path = get_config_folder_path()
-        os.makedirs(self.config_folder_path, exist_ok=True)
+        if not os.path.exists(self.config_folder_path):
+            os.makedirs(self.config_folder_path)
+            hide_folder(self.config_folder_path) # ИЗМЕНЕНО: Скрываем папку при создании
         print(f"Папка конфигураций: {self.config_folder_path}")
 
         # Инициализируем layers_data перед LayerManager
